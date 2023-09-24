@@ -8,7 +8,7 @@ import createMarkup from './js/createMarkup';
 const formElement = document.querySelector('.search-form');
 const galleryWrapperElement = document.querySelector('.gallery');
 const spanElement = document.querySelector('.js-span');
-// const formBtn = document.querySelector('button')
+const bottomElement = document.querySelector('.bottomElement');
 
 spanElement.classList.add('is-hidden')
 
@@ -17,28 +17,20 @@ formElement.addEventListener('submit', onSubmitSearch);
 let currentPage = 1;
 let value = '';
 let totalHitsImg = 0;
-
-const infiniteScroll = new InfiniteScroll(galleryWrapperElement, {
-  responseType: 'json',
-  history: false,
-  status: '.scroll-status',
-  path: function () {
-    return `${BASE_URL}?key=${API_KEY}&q=${value}&image_type=photo&orientation=horizontal&safesearch=true&per_page=${PER_PAGE}&page=${currentPage}`;
-  },
-})
+let lightbox;
 
 function onLoad() {
-    currentPage += 1;
-    getImage();
+  currentPage += 1;
+  getImage();
 }
 
 function onSubmitSearch(e) {
-  e.preventDefault();
-  spanElement.classList.add('is-hidden')
+    e.preventDefault();
+    spanElement.classList.add('is-hidden')
     value = e.currentTarget.elements.searchQuery.value.trim().toLowerCase();
     if (!value) {
-        message('Please write correct data!');
-        return;
+      message('Please write correct data!');
+      return;
     }
     clearGallery();
     getImage();
@@ -46,49 +38,87 @@ function onSubmitSearch(e) {
 
 async function getImage() {
   try {
-    const resp = await fetchImages(currentPage, value);
-    galleryWrapperElement.insertAdjacentHTML(
-      'beforeend',
-      createMarkup(resp.hits)
-    );
-    lightbox.refresh();
-    if (resp.total === 0) {
-      message('Please write correct data!');
-      return;
-    }
-    totalHitsImg += resp.hits.length;
-    console.log(totalHitsImg)
-    infiniteScroll.on('load', onLoad);
-    infiniteScroll.on('error', () => Report.failure('404', ''));
+      const resp = await fetchImages(currentPage, value);
+      galleryWrapperElement.insertAdjacentHTML(
+        'beforeend',
+        createMarkup(resp.hits)
+      );
 
-    if (totalHitsImg === resp.totalHits || totalHitsImg < 40) {
-      infiniteScroll.off('load', onLoad);
-      spanElement.classList.remove('is-hidden');
-      spanElement.textContent = `End of the search. We found ${totalHitsImg} images.`;
-      return;
-    }
-    if (totalHitsImg > PER_PAGE) {
-      
-      const { height: cardHeight } =
-        galleryWrapperElement.firstElementChild.getBoundingClientRect();
+      if (!lightbox) {
+        lightbox = new SimpleLightbox('.gallery a', {
+          captions: true,
+          captionsData: 'alt',
+          captionPosition: 'bottom',
+          captionDelay: 250,
+        });
+      } else {
+        lightbox.refresh();
+      }
 
-      window.scrollBy({
-        top: cardHeight * 2,
-        behavior: 'auto',
-      });
-    }
+      if (resp.total === 0) {
+        message('Please write correct data!');
+        return;
+      }
+      totalHitsImg += resp.hits.length;
+      console.log(totalHitsImg)
+
+      infiniteScroll.on('load', onLoad);
+      infiniteScroll.on('error', () => Report.failure(`Stop searching. We found ${totalHitsImg} images.`, ''));
+
+      if (totalHitsImg === resp.totalHits || totalHitsImg < PER_PAGE) {
+        infiniteScroll.off('load', onLoad);
+        spanElement.classList.remove('is-hidden');
+        spanElement.textContent = `End of the search. We found ${totalHitsImg} images.`;
+        return;
+      }
+      if (totalHitsImg > PER_PAGE) {
+        const { height: cardHeight } =
+          galleryWrapperElement.firstElementChild.getBoundingClientRect();
+        window.scrollBy({
+          top: cardHeight * 2,
+          behavior: 'smooth',
+        });
+      }
   } catch (error) {
-    Report.failure('Oops.. Some problems. Reload page, please.', '');
-    console.error(error);
-  }
+      Report.failure(`Stop searching - found ${totalHitsImg} images. Reload page, please.`, '');
+      console.error(error);
+    }
 }
 
-let lightbox = new SimpleLightbox('.gallery a', {
-  captions: true,
-  captionsData: 'alt',
-  captionPosition: 'bottom',
-  captionDelay: 250,
-});
+// function handleIntersection(entries, observer) {
+//   entries.forEach((entry) => {
+//     if (entry.isIntersecting) {
+//       getImage();
+//     }
+//   });
+// }
+// const options = {
+//     root: null,
+//     rootMargin: '100px',
+//     threshold: 0.5,
+// };
+// const intersectionObserver = new IntersectionObserver(
+//     handleIntersection,
+//     options
+// );
+// intersectionObserver.observe(bottomElement);
+// const infinite = new IntersectionObserver(([entry], observer) => {
+//     if (entry.isIntersecting) {
+//       observer.unobserve(entry.target);
+//       getImage();
+//     }
+// });
+
+
+const infiniteScroll = new InfiniteScroll(galleryWrapperElement, {
+    responseType: 'json',
+    history: false,
+    status: '.scroll-status',
+    type: 'fetch',
+    path: function () {
+      return `${BASE_URL}?key=${API_KEY}&q=${value}&image_type=photo&orientation=horizontal&safesearch=true&per_page=${PER_PAGE}&page=${currentPage}`;
+    },
+})
 
 
 
