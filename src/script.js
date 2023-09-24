@@ -8,6 +8,9 @@ import createMarkup from './js/createMarkup';
 const formElement = document.querySelector('.search-form');
 const galleryWrapperElement = document.querySelector('.gallery');
 const spanElement = document.querySelector('.js-span');
+// const formBtn = document.querySelector('button')
+
+spanElement.classList.add('is-hidden')
 
 formElement.addEventListener('submit', onSubmitSearch);
 
@@ -21,8 +24,9 @@ function onLoad() {
 }
 
 function onSubmitSearch(e) {
-    e.preventDefault();
-    value = e.currentTarget.elements.searchQuery.value;
+  e.preventDefault();
+  spanElement.classList.add('is-hidden')
+    value = e.currentTarget.elements.searchQuery.value.trim().toLowerCase();
     if (!value) {
         message('Please write correct data!');
         return;
@@ -44,22 +48,28 @@ async function getImage() {
       return;
     }
     totalHitsImg += resp.hits.length;
+    console.log(totalHitsImg)
+    infiniteScroll.on('load', onLoad);
+    infiniteScroll.on('error', () => Report.failure('404', ''));
+
     if (totalHitsImg === resp.totalHits || totalHitsImg < 40) {
-      spanElement.textContent =
-        'Were sorry, but you ve reached the end of search results.';
+      infiniteScroll.off('load', onLoad);
+      spanElement.classList.remove('is-hidden');
+      spanElement.textContent = `End of the search. We found ${totalHitsImg} images.`;
       return;
     }
-    if (totalHitsImg >  PER_PAGE) {
+    if (totalHitsImg > PER_PAGE) {
+      
       const { height: cardHeight } =
         galleryWrapperElement.firstElementChild.getBoundingClientRect();
 
       window.scrollBy({
         top: cardHeight * 2,
-        behavior: 'smooth',
+        behavior: 'auto',
       });
     }
   } catch (error) {
-    Report.failure('404', '');
+    Report.failure('Oops.. Some problems. Reload page, please.', '');
     console.error(error);
   }
 }
@@ -79,10 +89,6 @@ const infiniteScroll = new InfiniteScroll(galleryWrapperElement, {
     return `${BASE_URL}?key=${API_KEY}&q=${value}&image_type=photo&orientation=horizontal&safesearch=true&per_page=${PER_PAGE}&page=${currentPage}`;
   },
 })
-
-infiniteScroll.on('load', onLoad);
-
-infiniteScroll.on('error', () => Report.failure('404', ''));
 
 function message(messageSrc) {
   Report.warning(`Warning!`, `${messageSrc}`);
