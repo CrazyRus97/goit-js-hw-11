@@ -18,6 +18,15 @@ let currentPage = 1;
 let value = '';
 let totalHitsImg = 0;
 
+const infiniteScroll = new InfiniteScroll(galleryWrapperElement, {
+  responseType: 'json',
+  history: false,
+  status: '.scroll-status',
+  path: function () {
+    return `${BASE_URL}?key=${API_KEY}&q=${value}&image_type=photo&orientation=horizontal&safesearch=true&per_page=${PER_PAGE}&page=${currentPage}`;
+  },
+})
+
 function onLoad() {
     currentPage += 1;
     getImage();
@@ -81,14 +90,7 @@ let lightbox = new SimpleLightbox('.gallery a', {
   captionDelay: 250,
 });
 
-const infiniteScroll = new InfiniteScroll(galleryWrapperElement, {
-  responseType: 'json',
-  history: false,
-  status: '.scroll-status',
-  path: function () {
-    return `${BASE_URL}?key=${API_KEY}&q=${value}&image_type=photo&orientation=horizontal&safesearch=true&per_page=${PER_PAGE}&page=${currentPage}`;
-  },
-})
+
 
 function message(messageSrc) {
   Report.warning(`Warning!`, `${messageSrc}`);
