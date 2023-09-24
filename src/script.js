@@ -9,6 +9,7 @@ const formElement = document.querySelector('.search-form');
 const galleryWrapperElement = document.querySelector('.gallery');
 const spanElement = document.querySelector('.js-span');
 const bottomElement = document.querySelector('.bottomElement');
+const lastItem = document.querySelector('.gallery :last-child');
 
 spanElement.classList.add('is-hidden')
 
@@ -28,12 +29,13 @@ function onSubmitSearch(e) {
     e.preventDefault();
     spanElement.classList.add('is-hidden')
     value = e.currentTarget.elements.searchQuery.value.trim().toLowerCase();
-    if (!value) {
+  if (!value) {
+      clearGallery();
       message('Please write correct data!');
       return;
     }
-    clearGallery();
-    getImage();
+  clearGallery();
+  getImage();
 }
 
 async function getImage() {
@@ -58,12 +60,16 @@ async function getImage() {
       if (resp.total === 0) {
         message('Please write correct data!');
         return;
-      }
-      totalHitsImg += resp.hits.length;
-      console.log(totalHitsImg)
+    }
+    
+    totalHitsImg += resp.hits.length;
+    console.log(totalHitsImg)
+    spanElement.classList.remove('is-hidden')
 
       infiniteScroll.on('load', onLoad);
       infiniteScroll.on('error', () => Report.failure(`Stop searching. We found ${totalHitsImg} images.`, ''));
+    
+      intersectionObserver.observe(galleryWrapperElement);
 
       if (totalHitsImg === resp.totalHits || totalHitsImg < PER_PAGE) {
         infiniteScroll.off('load', onLoad);
@@ -74,9 +80,9 @@ async function getImage() {
       if (totalHitsImg > PER_PAGE) {
         const { height: cardHeight } =
           galleryWrapperElement.firstElementChild.getBoundingClientRect();
-        window.scrollBy({
-          top: cardHeight * 2,
-          behavior: 'smooth',
+          window.scrollBy({
+            top: cardHeight * 2,
+            behavior: 'smooth',
         });
       }
   } catch (error) {
@@ -85,23 +91,20 @@ async function getImage() {
     }
 }
 
-// function handleIntersection(entries, observer) {
-//   entries.forEach((entry) => {
-//     if (entry.isIntersecting) {
-//       getImage();
-//     }
-//   });
-// }
-// const options = {
-//     root: null,
-//     rootMargin: '100px',
-//     threshold: 0.5,
-// };
-// const intersectionObserver = new IntersectionObserver(
-//     handleIntersection,
-//     options
-// );
-// intersectionObserver.observe(bottomElement);
+
+function handleIntersection(entries, observer) {
+  entries.forEach((entry) => {
+    if (entry.isIntersecting) {
+      getImage();
+    }
+  });
+}
+const options = {
+    root: null,
+    rootMargin: '100px',
+    threshold: 0.5,
+};
+const intersectionObserver = new IntersectionObserver(handleIntersection, options);
 // const infinite = new IntersectionObserver(([entry], observer) => {
 //     if (entry.isIntersecting) {
 //       observer.unobserve(entry.target);
@@ -114,13 +117,10 @@ const infiniteScroll = new InfiniteScroll(galleryWrapperElement, {
     responseType: 'json',
     history: false,
     status: '.scroll-status',
-    type: 'fetch',
     path: function () {
       return `${BASE_URL}?key=${API_KEY}&q=${value}&image_type=photo&orientation=horizontal&safesearch=true&per_page=${PER_PAGE}&page=${currentPage}`;
     },
 })
-
-
 
 function message(messageSrc) {
   Report.warning(`Warning!`, `${messageSrc}`);
