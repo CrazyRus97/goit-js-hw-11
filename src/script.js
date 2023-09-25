@@ -63,6 +63,8 @@ async function getImage(photo) {
     
     //Checking end of search  
       if (totalHitsImg > totalCard || resp.totalHits < perPage) {
+          spanElement.classList.remove('is-hidden')
+          spanElement.textContent = `End of the search. We found ${totalHitsImg} images.`;
           Notiflix.Notify.info('There are no more images on this data!');
       }
       
