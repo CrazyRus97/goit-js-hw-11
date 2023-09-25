@@ -23,7 +23,6 @@ let lightbox;
 inputValue.addEventListener("input", inputSearch);
 
 function inputSearch() {
-
 if (inputValue.value.length > 1 ) {
   btnElement.removeAttribute("disabled");
 } else {
@@ -42,41 +41,41 @@ function onSubmitSearch(e) {
       return
   };
   clearGallery();
-  callRequest(searchValue);
+  getImage(searchValue);
   inputValue.value = '';
   inputValue.addEventListener("input", inputSearch);
   btnElement.setAttribute("disabled", true);
 };
 
-async function callRequest(param) {
+async function getImage(photo) {
   try {
-      const resp = await serchingPhoto(param, perPage, currentPage);
-      let totalPage = Math.ceil(resp.totalHits / perPage);
+      const resp = await serchingPhoto(photo, perPage, currentPage);
+      let totalPages = Math.ceil(resp.totalHits / perPage);
 
-        if (!resp.hits.length) {
-            Notiflix.Notify.failure('Please write correct data!');
-            return
-        };
+      if (!resp.hits.length) {
+          Notiflix.Notify.failure('Please write correct data!');
+          return
+      };
 
       totalHitsImg += resp.hits.length;
       let thisPage = Math.ceil(totalHitsImg / perPage);
-      
       let totalCard = resp.total;
+    
+    //Checking end of search  
+      if (totalHitsImg > totalCard || resp.totalHits < perPage) {
+          Notiflix.Notify.info('There are no more images on this data!');
+      }
       
-        if (totalHitsImg > totalCard || resp.totalHits < perPage) {
-            Notiflix.Notify.info('There are no more images on this data!');
-        }
-        
       galleryWrapperElement.insertAdjacentHTML("beforeend", createMarkup(resp.hits));
+    
+    //Checking page
       if (thisPage === 1) {
         Notiflix.Notify.success(`Total photos You can see = ${resp.totalHits}`);
       }
-
-      if (thisPage < totalPage) {
+      if (thisPage < totalPages) {
           window.addEventListener('scroll',handScrolling);
       }
-
-      if (thisPage === totalPage) {
+      if (thisPage === totalPages) {
           searchValue = '';
           window.removeEventListener('scroll', handScrolling);
           if (thisPage !== 1) {
@@ -85,35 +84,33 @@ async function callRequest(param) {
               Notiflix.Notify.info('All photos are downloaded.');
           }
       }
+    
       if (resp.totalHits > perPage  ) {
         if (totalCard > perPage) {
-           const { height: cardHeight } = document
-       
-        galleryWrapperElement.firstElementChild.getBoundingClientRect();
-
-        window.scrollBy({
-        top: cardHeight * 2,
-        behavior: "smooth",
-    });         };
+            const { height: cardHeight } = document
+            galleryWrapperElement.firstElementChild.getBoundingClientRect();
+            window.scrollBy({
+            top: cardHeight * 2,
+            behavior: "smooth",
+        });
+        };
       };
-
-        if (totalCard > perPage) {
-           const { height: cardHeight } = document
     
+      if (totalCard > perPage) {
+           const { height: cardHeight } = document
            galleryWrapperElement.firstElementChild.getBoundingClientRect();
-
            window.scrollBy({
            top: cardHeight * 2,
            behavior: "smooth",
            });
-    };
+        };
     
-    if (!lightbox) {
-      lightbox = new SimpleLightbox('.gallery a', {
-        captions: true,
-        captionsData: 'alt',
-        captionPosition: 'bottom',
-        captionDelay: 250,
+      if (!lightbox) {
+          lightbox = new SimpleLightbox('.gallery a', {
+          captions: true,
+          captionsData: 'alt',
+          captionPosition: 'bottom',
+          captionDelay: 250,
       });
       } else {
         lightbox.refresh();
@@ -137,7 +134,7 @@ function onPage() {
 
 function onLoad() {
   onPage()
-  callRequest(searchValue)
+  getImage(searchValue)
 }
  
 function handScrolling() {
@@ -148,7 +145,3 @@ function handScrolling() {
     onLoad();
   }
 }
-
-
-
-

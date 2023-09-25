@@ -1,4 +1,3 @@
-
 export default function createMarkup(photosArr) {
     return photosArr.map(
       ({

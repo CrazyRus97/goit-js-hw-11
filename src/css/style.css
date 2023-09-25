@@ -70,19 +70,19 @@ input {
   letter-spacing: 0.04em;
 }
 
-.gallery {
-  justify-content: center;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px 20px;
-}
-
 .search-form {
   padding-top: 20px;
   padding-bottom: 20px;
   display: flex;
   column-gap: 30px;
   justify-content: center;
+}
+
+.gallery {
+  justify-content: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px 20px;
 }
 
 .photo-box {
@@ -120,9 +120,15 @@ input {
   .container {
     max-width: 768px;
   }
+  .photo-box {
+    flex-basis: calc((100% - 40px) / 2);
+  }
 }
 @media screen and (min-width: 1158px) {
   .container {
     max-width: 1158px;
+  }
+  .photo-box {
+    flex-basis: calc((100% - 40px) / 3);
   }
 }
