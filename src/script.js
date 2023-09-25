@@ -1,134 +1,165 @@
-import { Report } from 'notiflix/build/notiflix-report-aio';
-import SimpleLightbox from 'simplelightbox';
-import 'simplelightbox/dist/simple-lightbox.min.css';
-import InfiniteScroll from 'infinite-scroll';
-import { fetchImages, PER_PAGE, API_KEY, BASE_URL } from './js/api';
-import createMarkup from './js/createMarkup';
+// import { Report } from 'notiflix/build/notiflix-report-aio';
+// import SimpleLightbox from 'simplelightbox';
+// import 'simplelightbox/dist/simple-lightbox.min.css';
+// import InfiniteScroll from 'infinite-scroll';
+// import { fetchImages, PER_PAGE, API_KEY, BASE_URL } from './js/api';
+// import createMarkup from './js/createMarkup';
 
-const formElement = document.querySelector('.search-form');
-const galleryWrapperElement = document.querySelector('.gallery');
-const spanElement = document.querySelector('.js-span');
-const bottomElement = document.querySelector('.bottomElement');
-const lastItem = document.querySelector('.gallery :last-child');
+// const formElement = document.querySelector('.search-form');
+// const galleryWrapperElement = document.querySelector('.gallery');
+// const spanElement = document.querySelector('.js-span');
+// const bottomElement = document.querySelector('.bottomElement');
+// const lastItem = document.querySelector('.gallery :last-child');
+
+// spanElement.classList.add('is-hidden')
+
+import Notiflix from 'notiflix';
+import SimpleLightbox from "simplelightbox";
+import "simplelightbox/dist/simple-lightbox.min.css";
+import { photoSearch } from "./js/api";
+import createMarkup from "./js/createMarkup";
+
+
+const form = document.getElementById('search-form');
+const inputValue = form.querySelector('input[name="searchQuery"]');
+const btnElement = form.querySelector('button[type="submit"]');
+const gallery = document.querySelector('.gallery');
+const spanElement = document.querySelector('.js-span')
 
 spanElement.classList.add('is-hidden')
 
-formElement.addEventListener('submit', onSubmitSearch);
+btnElement.setAttribute("disabled", true);
 
+const perPage = 40;
 let currentPage = 1;
-let value = '';
 let totalHitsImg = 0;
-let lightbox;
+let searchParam = '';
 
-function onLoad() {
-  currentPage += 1;
-  getImage();
+inputValue.addEventListener("input", inputSearch);
+function inputSearch() {
+  inputValue.value = event.currentTarget.value;
+if (inputValue.value.length > 1 ) {
+  btnElement.removeAttribute("disabled");
+} else {
+  btnElement.setAttribute("disabled", true);
+  };
 }
 
-function onSubmitSearch(e) {
-    e.preventDefault();
-    spanElement.classList.add('is-hidden')
-    value = e.currentTarget.elements.searchQuery.value.trim().toLowerCase();
-  if (!value) {
-      clearGallery();
-      message('Please write correct data!');
-      return;
-    }
-  clearGallery();
-  getImage();
-}
+form.addEventListener('submit', onClick);
 
-async function getImage() {
-  try {
-      const resp = await fetchImages(currentPage, value);
-      galleryWrapperElement.insertAdjacentHTML(
-        'beforeend',
-        createMarkup(resp.hits)
-      );
-
-      if (!lightbox) {
-        lightbox = new SimpleLightbox('.gallery a', {
-          captions: true,
-          captionsData: 'alt',
-          captionPosition: 'bottom',
-          captionDelay: 250,
-        });
-      } else {
-        lightbox.refresh();
-      }
-
-      if (resp.total === 0) {
-        message('Please write correct data!');
-        return;
-    }
+function onClick(e) {
+  e.preventDefault();
+  inputValue.removeEventListener("input",inputSearch)
+  window.removeEventListener('scroll', handleScroll);
     
-    totalHitsImg += resp.hits.length;
-    console.log(totalHitsImg)
-    spanElement.classList.remove('is-hidden')
-
-      infiniteScroll.on('load', onLoad);
-      infiniteScroll.on('error', () => Report.failure(`Stop searching. We found ${totalHitsImg} images.`, ''));
-    
-      intersectionObserver.observe(galleryWrapperElement);
-
-      if (totalHitsImg === resp.totalHits || totalHitsImg < PER_PAGE) {
-        infiniteScroll.off('load', onLoad);
-        spanElement.classList.remove('is-hidden');
-        spanElement.textContent = `End of the search. We found ${totalHitsImg} images.`;
-        return;
-      }
-      if (totalHitsImg > PER_PAGE) {
-        const { height: cardHeight } =
-          galleryWrapperElement.firstElementChild.getBoundingClientRect();
-          window.scrollBy({
-            top: cardHeight * 2,
-            behavior: 'smooth',
-        });
-      }
-  } catch (error) {
-      Report.failure(`Stop searching - found ${totalHitsImg} images. Reload page, please.`, '');
-      console.error(error);
-    }
-}
-
-
-function handleIntersection(entries, observer) {
-  entries.forEach((entry) => {
-    if (entry.isIntersecting) {
-      getImage();
-    }
-  });
-}
-const options = {
-    root: null,
-    rootMargin: '100px',
-    threshold: 0.5,
+    searchParam = inputValue.value.trim().toLowerCase();
+    if (!searchParam) {
+       return
+  };
+    clearingPage();
+  callRequest(searchParam);
+  inputValue.value = '';
+  inputValue.addEventListener("input", inputSearch);
+  btnElement.setAttribute("disabled", true);
 };
-const intersectionObserver = new IntersectionObserver(handleIntersection, options);
-// const infinite = new IntersectionObserver(([entry], observer) => {
-//     if (entry.isIntersecting) {
-//       observer.unobserve(entry.target);
-//       getImage();
-//     }
-// });
 
+async function callRequest(param) {
+  try {
+      const resp = await photoSearch(param, perPage, currentPage);
+      console.log("rrrrr", resp);
+      let totalPage = Math.ceil(resp.totalHits / perPage);
+      
+      console.log('загальна кількість сторінок',totalPage);
 
-const infiniteScroll = new InfiniteScroll(galleryWrapperElement, {
-    responseType: 'json',
-    history: false,
-    status: '.scroll-status',
-    path: function () {
-      return `${BASE_URL}?key=${API_KEY}&q=${value}&image_type=photo&orientation=horizontal&safesearch=true&per_page=${PER_PAGE}&page=${currentPage}`;
-    },
-})
+        if (!resp.hits.length) {
+            Notiflix.Notify.failure('Please write correct data!');
+            return
+        };
 
-function message(messageSrc) {
-  Report.warning(`Warning!`, `${messageSrc}`);
+      totalHitsImg += resp.hits.length;
+      let thisPage = Math.ceil(totalHitsImg / perPage);
+      // console.log("поточна сторінка",thisPage);
+      // console.log("к-сть зав карток",totalHitsImg);
+      let totalCard = resp.total;
+      
+        if (totalHitsImg > totalCard || resp.totalHits < perPage) {
+            Notiflix.Notify.info('There are no images on this topic!');
+        }
+        
+      gallery.insertAdjacentHTML("beforeend", createMarkup(resp.hits));
+      if (thisPage === 1) {
+        Notiflix.Notify.success(`Total photos You can see = ${resp.totalHits}`);
+      }
+
+if (thisPage < totalPage) {
+    window.addEventListener('scroll',handleScroll);
 }
 
-function clearGallery() {
-  totalHitsImg = 0;
+if (thisPage === totalPage) {
+  searchParam = '';
+  window.removeEventListener('scroll', handleScroll);
+  if (thisPage !== 1) {
+    spanElement.classList.remove('is-hidden')
+    spanElement.textContent = `End of the search. We found ${totalHitsImg} images.`;
+    Notiflix.Notify.info('All photos are downloaded.');
+  }
+}
+      if (resp.totalHits > perPage  ) {
+        if (totalCard > perPage) {
+           const { height: cardHeight } = document
+       
+        gallery.firstElementChild.getBoundingClientRect();
+
+        window.scrollBy({
+        top: cardHeight * 2,
+        behavior: "smooth",
+    });         };
+      };
+
+        if (totalCard > perPage) {
+           const { height: cardHeight } = document
+    
+        gallery.firstElementChild.getBoundingClientRect();
+
+        window.scrollBy({
+        top: cardHeight * 2,
+        behavior: "smooth",
+    });         };
+
+        const lightbox = new SimpleLightbox('.gallery a', { animationSpeed: 300 });
+    
+        
+    } catch (error) {
+        console.log(error);
+    }; 
+}
+
+function onPage() {
+  currentPage += 1;
+}
+
+function clearingPage() {
+  gallery.innerHTML = "";
   currentPage = 1;
-  spanElement.innerHTML = '';
-  galleryWrapperElement.innerHTML = '';
+  totalHitsImg = 0
+};
+ 
+function handleScroll() {
+    // Отримуємо висоту сторінки
+    const pageHeight = document.documentElement.scrollHeight;
+    // Отримуємо висоту вікна перегляду
+    const windowHeight = window.innerHeight;
+    // Отримуємо поточну позицію прокрутки
+    const scrollPosition = window.scrollY;
+
+    if (scrollPosition + windowHeight >= pageHeight) {
+        newFunction();
+    }
 }
+
+function newFunction() {
+  onPage()
+  callRequest(searchParam)
+}
+
+
